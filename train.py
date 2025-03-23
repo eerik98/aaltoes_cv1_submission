@@ -10,25 +10,23 @@ from EITLNet.nets.EITLnet import SegFormer
 from aaltoes_cv1.dataset_aaltoes_cv1 import DatasetAaltoesCV1
 from aaltoes_cv1.utils import get_transforms, get_config
 
+# read config
 config = get_config('./config/config.yml')
+dataset_train_path = os.path.expanduser(os.path.join(config['dataset'], 'train'))
+dataset_validation_path = os.path.expanduser(os.path.join(config['dataset'], 'validation'))
+batch_size=config['train']['batch_size']
+device=config['train']['device']
+n_epochs=config['train']['n_epochs']
+workers=config['train']['workers']
+start_epoch = config['train']['start_epoch']
 
 eval_file=open(os.path.join('checkpoints','eval.txt'),"a")
-
-# dataset_path='/home/eerik/data_storage/DATA/aaltoes-2025-computer-vision-v-1'
-dataset_train_path=os.path.expanduser('~/workspace/aaltoes_cv1/kaggle_aaltoes_cv1/train')
-# dataset_train_path=os.path.expanduser('~/workspace/aaltoes_cv1/kaggle_aaltoes_cv1_proper/train')
-dataset_validation_path=os.path.expanduser('~/workspace/aaltoes_cv1/kaggle_aaltoes_cv1_proper/validation')
-batch_size=16
-device='cuda'
-n_epochs=100
-workers=12
 
 if device != 'cpu':
     import torch.backends.cudnn as cudnn
     cudnn.benchmark = False
     cudnn.deterministic = False
-    cudnn.enabled = False
-    # cudnn.enabled = True
+    cudnn.enabled = config['use_cudnn']
 
 img_transform, label_transform = get_transforms()
 
@@ -40,7 +38,6 @@ val_loader = DataLoader(validation_dataset, batch_size=batch_size, shuffle=False
 
 model = SegFormer(num_classes=2, phi='b2', dual=True)
 
-start_epoch = 23
 checkpoint_path=f'checkpoints/{start_epoch}.pth'
 checkpoint_data = torch.load(checkpoint_path, map_location='cpu')
 model.load_state_dict(torch.load(checkpoint_path,weights_only=True))
@@ -82,7 +79,6 @@ for epoch in range(start_epoch+1, n_epochs):
             jaccard_index.update(preds, labels)
 
     avg_jaccard = jaccard_index.compute()
-
     print(avg_jaccard)
 
     eval_file.write(f"Validation (IoU): {avg_jaccard:.4f}\n")

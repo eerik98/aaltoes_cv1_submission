@@ -6,12 +6,13 @@ from torch.utils.data import DataLoader
 import torchvision.transforms as T
 from EITLNet.nets.EITLnet import SegFormer
 from aaltoes_cv1.dataset_aaltoes_cv1 import DatasetAaltoesCV1
-from aaltoes_cv1.utils import get_transforms
+from aaltoes_cv1.utils import get_transforms, get_config
 
-checkpoint = 23
+config = get_config('./config/config.yml')
+checkpoint=config['train']['best_epoch']
+test_dataset_path=os.path.expanduser(config['test_dataset'])
+
 result_dir='preds'
-image_dir=os.path.expanduser("~/workspace/aaltoes_cv1/kaggle_aaltoes_cv1/test")
-
 if not os.path.exists(result_dir):
     os.mkdir(result_dir)
 
@@ -27,7 +28,7 @@ model.eval()
 
 img_transform, _ = get_transforms()
 
-test_dataset = DatasetAaltoesCV1(path=image_dir, img_transform=img_transform, label_transform=None, only_inference=True)
+test_dataset = DatasetAaltoesCV1(path=test_dataset_path, img_transform=img_transform, label_transform=None, only_inference=True)
 test_loader = DataLoader(test_dataset, batch_size=16, shuffle=False, drop_last=False, num_workers=12)
 
 for images, filenames in tqdm(test_loader, desc="Inference"):
