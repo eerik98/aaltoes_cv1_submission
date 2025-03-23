@@ -1,8 +1,8 @@
-# Aaltoes CV1 submission
+# 🍔 Aaltoes CV1 submission 🍔
 
 Using the EITLNet architecture.
 
-Team members:
+Team members (teamname: `here for burgers`):
 
 - Eerik Alamikkotervo [GitHub](https://github.com/eerik98)
 
