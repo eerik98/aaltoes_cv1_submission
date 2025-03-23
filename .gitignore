@@ -6,3 +6,4 @@ checkpoints/
 weights/
 *.png
 model_data/
+submission.csv

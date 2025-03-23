@@ -1,0 +1,18 @@
+name: aaltoes_cv1_submission
+channels:
+- conda-forge
+dependencies:
+- pip
+- pip:
+  - opencv-python
+  - torch
+  - torchvision
+  - scikit-learn
+  - tqdm
+  - matplotlib
+  - albumentations
+  - numpy
+  - PyYAML
+  - tensorboardX
+  - timm
+  - torchmetrics

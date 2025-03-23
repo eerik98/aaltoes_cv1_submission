@@ -7,40 +7,48 @@ import random
 
 class OwnDataset(Dataset):
     def __init__(self, path, img_transform, label_transform):
-        forged_dir=os.path.join(path,'images')
-        label_dir=os.path.join(path,'masks')
-        original_dir=os.path.join(path,'originals')
-        self.forged_dir = forged_dir
-        self.label_dir = label_dir
-        self.original_dir = original_dir
+        self.forged_dir=os.path.join(path,'images')
+        self.label_dir=os.path.join(path,'masks')
+        self.original_dir=os.path.join(path,'originals')
         self.img_transform = img_transform
         self.label_transform = label_transform
+        
+        dict1 = dict([(int(img.split('_')[1].split('.')[0]), img) for img in os.listdir(self.forged_dir)])
+        dict2 = dict([(int(img.split('_')[1].split('.')[0]), img) for img in os.listdir(self.label_dir)])
+        dict3 = dict([(int(img.split('_')[1].split('.')[0]), img) for img in os.listdir(self.original_dir)])
+
+        ks = set(dict1.keys()).union(set(dict2.keys()), set(dict3.keys()))
+        self.img_idxs = list(range(len(ks)))
+        self.img_to_idxs = dict(zip(sorted(ks), self.img_idxs))
+
+        self.dataset = dict((self.img_to_idxs[k], [None, None, None]) for k in ks)
+        for idx, img in dict1.items(): self.dataset[self.img_to_idxs[idx]][0] = img
+        for idx, img in dict2.items(): self.dataset[self.img_to_idxs[idx]][1] = img
+        for idx, img in dict3.items(): self.dataset[self.img_to_idxs[idx]][2] = img
 
     def __len__(self):
-        return len(os.listdir(self.forged_dir))
-        #
-        #return 100
+        return len(self.dataset)
 
     def __getitem__(self, idx):
-        forged_path = os.path.join(self.forged_dir,'image_'+str(idx)+'.png')
-        original_path = os.path.join(self.original_dir,'image_'+str(idx)+'.png')
-        label_path = os.path.join(self.label_dir,'image_'+str(idx)+'.png')  # Assuming masks have the same filename as images
-        
-        #try to get orignal 30 % of the time
-        if os.path.exists(original_path) and random.random()<0.3:
-            image = Image.open(original_path).convert("RGB")
-            label = Image.new("L", (256, 256), (0, 0, 0))
+        forged_fn, label_fn, original_fn = self.dataset[idx]
+        # forged_path = os.path.join(self.forged_dir,'image_'+str(idx)+'.png')
+        # original_path = os.path.join(self.original_dir,'image_'+str(idx)+'.png')
+        # label_path = os.path.join(self.label_dir,'image_'+str(idx)+'.png')  # Assuming masks have the same filename as images
+        forged_path = os.path.join(self.forged_dir, forged_fn)
+        label_path = os.path.join(self.label_dir, label_fn)
 
+        #try to get orignal 30 % of the time
+        if original_fn is not None and random.random()<0.3:
+            original_path = os.path.join(self.original_dir, original_fn)
+            image = Image.open(original_path).convert("RGB")
+            label = Image.new("L", (256, 256), 0)
         else:
             image = Image.open(forged_path).convert("RGB")
             label = Image.open(label_path).convert("L")  # Grayscale mask (foreground/background)
 
-        
         image = self.img_transform(image)
         label = self.label_transform(label)
 
-
         label = torch.where(label > 0, 1, 0)  # Binarize mask (0: background, 1: foreground)
         label = torch.cat((label,1-label),dim=0).float()
-
         return image,label

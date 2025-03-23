@@ -17,17 +17,24 @@ import yaml
 import shutil
 import cv2
 
-
 #log_dir=os.path.join('./','logs')
 #checkpoint_dir=os.path.join(log_dir,'checkpoints')
 
 eval_file=open(os.path.join('checkpoints','eval.txt'),"w")
 
-dataset_path='/home/eerik/data_storage/DATA/aaltoes-2025-computer-vision-v-1'
-batch_size=4
+# dataset_path='/home/eerik/data_storage/DATA/aaltoes-2025-computer-vision-v-1'
+dataset_train_path=os.path.expanduser('~/workspace/aaltoes_cv1/kaggle_aaltoes_cv1_proper/train')
+dataset_validation_path=os.path.expanduser('~/workspace/aaltoes_cv1/kaggle_aaltoes_cv1_proper/validation')
+batch_size=16
 device='cuda'
 n_epochs=100
-val_size=0.1
+workers=12
+
+if device != 'cpu':
+    import torch.backends.cudnn as cudnn
+    cudnn.benchmark = False
+    cudnn.deterministic = False
+    cudnn.enabled = True
 
 # Define transformations
 img_transform = T.Compose([
@@ -38,34 +45,28 @@ label_transform = T.Compose([
     T.ToTensor()
 ])
 
-full_dataset = OwnDataset(path=os.path.join(dataset_path,'train/train'), img_transform=img_transform,label_transform=label_transform)
+train_dataset = OwnDataset(path=dataset_train_path, img_transform=img_transform,label_transform=label_transform)
+validation_dataset = OwnDataset(path=dataset_validation_path, img_transform=img_transform,label_transform=label_transform)
 
-indices = np.arange(len(full_dataset))
-train_indices, val_indices = train_test_split(indices, test_size=val_size, shuffle=True)
-
-train_subset = Subset(full_dataset, train_indices)
-val_subset = Subset(full_dataset, val_indices)
-
-train_loader = DataLoader(train_subset, batch_size=batch_size, shuffle=True, drop_last=False)
-val_loader = DataLoader(val_subset, batch_size=batch_size, shuffle=False, drop_last=False)
-
+train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, drop_last=False, num_workers=workers)
+val_loader = DataLoader(validation_dataset, batch_size=batch_size, shuffle=False, drop_last=False, num_workers=workers)
 
 model = SegFormer(num_classes=2, phi='b2', dual=True)
-checkpoint_path='checkpoints/21.pth'
+
+start_epoch = 21
+checkpoint_path=f'checkpoints/{start_epoch}.pth'
 checkpoint_data = torch.load(checkpoint_path, map_location='cpu')
 model.load_state_dict(torch.load(checkpoint_path,weights_only=True))
 
-
 criterion = nn.CrossEntropyLoss()
-optimizer = optim.AdamW(model.parameters(), lr=1e-4)
+optimizer = optim.AdamW(model.parameters(), lr=1e-5)
 
 model = model.to(device)
 
 jaccard_index = torchmetrics.JaccardIndex(task='binary',num_classes=1)
 jaccard_index.to(device)
 
-for epoch in range(n_epochs):
-
+for epoch in range(start_epoch+1, n_epochs):
     model.train()
     running_loss = 0.0
     
@@ -74,9 +75,7 @@ for epoch in range(n_epochs):
         labels = labels.to(device)
 
         optimizer.zero_grad()
-
         outputs = model(images)
-
         preds = torch.argmin(outputs, dim=1).unsqueeze(1)
    
         loss = criterion(outputs, labels)
@@ -105,14 +104,3 @@ for epoch in range(n_epochs):
     torch.save(model.state_dict(), os.path.join('checkpoints',str(epoch)+'.pth'))
 
 eval_file.close()
-
-
-
-
-
-
-
-
-
-
-

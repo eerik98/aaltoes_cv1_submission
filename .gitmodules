@@ -1,0 +1,3 @@
+[submodule "EITLNet"]
+	path = EITLNet
+	url = https://github.com/multimediaFor/EITLNet
