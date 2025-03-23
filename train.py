@@ -1,14 +1,13 @@
-from EITLnet.nets.EITLnet import SegFormer
-import torch
 import os
+from tqdm import tqdm
 import torch
 from torch.utils.data import DataLoader
-import torchvision.transforms as T
 import torch.nn as nn
 import torch.optim as optim
 import torchmetrics
-from dataset_aaltoes_cv1 import DatasetAaltoesCV1
-from tqdm import tqdm
+
+from EITLNet.nets.EITLnet import SegFormer
+from aaltoes_cv1.dataset_aaltoes_cv1 import DatasetAaltoesCV1
 from aaltoes_cv1.utils import get_transforms, get_config
 
 config = get_config('./config.yml')
@@ -23,8 +22,9 @@ batch_size=16
 device='cuda'
 n_epochs=100
 workers=12
-momentum=0.9
-weight_decay=1e-2
+# momentum=0.9
+# weight_decay=1e-2
+# , betas=(momentum, 0.999), weight_decay=weight_decay
 
 if device != 'cpu':
     import torch.backends.cudnn as cudnn
@@ -49,7 +49,7 @@ checkpoint_data = torch.load(checkpoint_path, map_location='cpu')
 model.load_state_dict(torch.load(checkpoint_path,weights_only=True))
 
 criterion = nn.CrossEntropyLoss()
-optimizer = optim.AdamW(model.parameters(), lr=5e-5, betas=(momentum, 0.999), weight_decay=weight_decay)
+optimizer = optim.AdamW(model.parameters(), lr=5e-5)
 
 model = model.to(device)
 

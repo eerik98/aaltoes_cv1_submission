@@ -1,25 +1,16 @@
 import os
-from PIL import Image
 import torch
-from torch.utils.data import Dataset, DataLoader, Subset
+from torch.utils.data import DataLoader
 import torchvision.transforms as T
-import torchvision.models.segmentation as segmentation
-import torch.nn as nn
-import torch.optim as optim
-import torchmetrics
-import numpy as np
-from own_dataset import OwnDataset
-import time
+from aaltoes_cv1.dataset_aaltoes_cv1 import DatasetAaltoesCV1
 import cv2
-import yaml
-import sys
-from nets.EITLnet import SegFormer
+from EITLNet.nets.EITLnet import SegFormer
 from tqdm import tqdm
 
 
 model = SegFormer(num_classes=2, phi='b2', dual=True)
 
-result_dir='preds2'
+result_dir='preds'
 image_dir=os.path.expanduser("~/workspace/aaltoes_cv1/kaggle_aaltoes_cv1/test")
 
 if not os.path.exists(result_dir):
@@ -38,7 +29,7 @@ img_transform = T.Compose([
     T.Normalize(mean = [0.485, 0.456, 0.406], std = [0.229, 0.224, 0.225]) #IMAGENET normalization
 ])
 
-test_dataset = OwnDataset(path=image_dir, img_transform=img_transform, label_transform=None, only_inference=True)
+test_dataset = DatasetAaltoesCV1(path=image_dir, img_transform=img_transform, label_transform=None, only_inference=True)
 test_loader = DataLoader(test_dataset, batch_size=16, shuffle=False, drop_last=False, num_workers=12)
 
 

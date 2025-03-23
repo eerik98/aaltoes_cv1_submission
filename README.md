@@ -14,7 +14,15 @@ TODO
 
 ## Training procedure
 
-TODO: How we trained
+The training was done in phases.
+
+1. Created train-validation split with 90% and 10% respectively
+ 
+2. We trained the model with `lr=1e-4` for ~20 epochs
+
+3. Few epochs were trained with `lr=1e-5`
+
+<!-- 4. Full-send: Final model was trained with all given data  -->
 
 ## Installation
 
@@ -39,5 +47,5 @@ The best weights can be found in `best_weights/`.
 
 ```bash
 . source.sh
-python3 train_own.py
+python3 train.py
 ```
