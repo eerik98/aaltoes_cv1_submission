@@ -1,7 +1,7 @@
 import yaml
 import torchvision.transforms as T
 
-def get_config(config_fp='./config.yml'):
+def get_config(config_fp='./config/config.yml'):
     with open(config_fp, "r") as f:
         config = yaml.safe_load(f)
     return config

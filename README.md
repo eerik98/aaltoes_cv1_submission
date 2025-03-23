@@ -30,8 +30,8 @@ The training was done in phases.
 git clone --recursive https://github.com/eerik98/aaltoes_cv1_submission
 cd aaltoes_cv1_submission
 
-conda env create -f environment.yml
-./setup.sh
+conda env create -f config/environment.yml
+./scripts/setup.sh
 pip install -e .
 ```
 
@@ -46,6 +46,6 @@ The best weights can be found in `best_weights/`.
 ## Training
 
 ```bash
-. source.sh
+. scripts/source.sh
 python3 train.py
 ```
