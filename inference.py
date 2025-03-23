@@ -1,27 +1,24 @@
 import os
-from PIL import Image
-import torch
-from torch.utils.data import Dataset, DataLoader, Subset
-import torchvision.transforms as T
-import torchvision.models.segmentation as segmentation
-import torch.nn as nn
-import torch.optim as optim
-import torchmetrics
-import numpy as np
-from own_dataset import OwnDataset
-import time
 import cv2
-import yaml
-import sys
-from nets.EITLnet import SegFormer
+from tqdm import tqdm
+import torch
+from torch.utils.data import DataLoader
+import torchvision.transforms as T
+from EITLNet.nets.EITLnet import SegFormer
+from aaltoes_cv1.dataset_aaltoes_cv1 import DatasetAaltoesCV1
+from aaltoes_cv1.utils import get_transforms, get_config
 
+config = get_config('./config/config.yml')
+checkpoint=config['train']['best_epoch']
+test_dataset_path=os.path.expanduser(config['test_dataset'])
+
+result_dir='preds'
+if not os.path.exists(result_dir):
+    os.mkdir(result_dir)
 
 model = SegFormer(num_classes=2, phi='b2', dual=True)
 
-result_dir='/home/eerik/data_storage/DATA/aaltoes-2025-computer-vision-v-1/test/test/preds'
-image_dir='/home/eerik/data_storage/DATA/aaltoes-2025-computer-vision-v-1/test/test/images'
-
-checkpoint_path='checkpoints/21.pth'
+checkpoint_path=f'checkpoints/{checkpoint}.pth'
 checkpoint_data = torch.load(checkpoint_path, map_location='cpu')
 
 model.load_state_dict(torch.load(checkpoint_path,weights_only=True))
@@ -29,22 +26,17 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 model.to(device)
 model.eval()
 
-img_transform = T.Compose([
-    T.ToTensor(),
-    T.Normalize(mean = [0.485, 0.456, 0.406], std = [0.229, 0.224, 0.225]) #IMAGENET normalization
-])
+img_transform, _ = get_transforms()
 
-#test_dataset = OwnDataset(path=img, img_transform=img_transform)
-#test_loader=DataLoader(test_dataset, batch_size=1, shuffle=False, drop_last=False)
+test_dataset = DatasetAaltoesCV1(path=test_dataset_path, img_transform=img_transform, label_transform=None, only_inference=True)
+test_loader = DataLoader(test_dataset, batch_size=16, shuffle=False, drop_last=False, num_workers=12)
 
-
-for image_file in os.listdir(image_dir):
-    image = Image.open(os.path.join(image_dir,image_file)).convert("RGB")
-    image_tensor = img_transform(image)
-    image_tensor = image_tensor.unsqueeze(0).to(device) #add batch_dim
-
+for images, filenames in tqdm(test_loader, desc="Inference"):
+    images = images.to(device)
     with torch.no_grad():
-        output = model(image_tensor)
-        output = torch.argmin(output, dim=1).squeeze(0)
-        output = output.cpu().numpy()
-        cv2.imwrite(os.path.join(result_dir,image_file),(output*255).astype('uint8'))
+        outputs = model(images)
+        predictions = torch.argmin(outputs, dim=1)
+        predictions = predictions.cpu().numpy()
+
+    for pred, filename in zip(predictions, filenames):
+        cv2.imwrite(os.path.join(result_dir, filename), (pred * 255).astype('uint8'))

@@ -1,182 +1,89 @@
-# -*- coding: utf-8 -*-
-
 import os
-import numpy as np
-import datetime
+from tqdm import tqdm
 import torch
-import torch.backends.cudnn as cudnn
-import torch.optim as optim
 from torch.utils.data import DataLoader
+import torch.nn as nn
+import torch.optim as optim
+import torchmetrics
 
-from utils.train_utils import get_lr_scheduler, set_optimizer_lr, weights_init, fit_one_epoch
-from utils.callbacks import LossHistory, EvalCallback
-from utils.dataloader import SegmentationDataset_train, seg_dataset_collate, SegmentationDataset_val
-from nets.EITLnet import SegFormer
+from EITLNet.nets.EITLnet import SegFormer
+from aaltoes_cv1.dataset_aaltoes_cv1 import DatasetAaltoesCV1
+from aaltoes_cv1.utils import get_transforms, get_config
 
+# read config
+config = get_config('./config/config.yml')
+dataset_train_path = os.path.expanduser(os.path.join(config['dataset'], 'train'))
+dataset_validation_path = os.path.expanduser(os.path.join(config['dataset'], 'validation'))
+batch_size=config['train']['batch_size']
+device=config['train']['device']
+n_epochs=config['train']['n_epochs']
+workers=config['train']['workers']
+start_epoch = config['train']['start_epoch']
 
+eval_file=open(os.path.join('checkpoints','eval.txt'),"a")
 
-def get_net(num_classes=2, phi='b2', pretrained=True, dual=True):
-    model = SegFormer(num_classes=num_classes, phi=phi, pretrained=pretrained, dual=dual)
-    return model
+if device != 'cpu':
+    import torch.backends.cudnn as cudnn
+    cudnn.benchmark = False
+    cudnn.deterministic = False
+    cudnn.enabled = config['use_cudnn']
 
-if __name__ == "__main__":
-    Cuda = True
-    num_classes = 1
-    phi = "b2" #b0
-    pretrained = False
-    model_path = ''
-    input_shape = [256, 256]
+img_transform, label_transform = get_transforms()
 
-    dual = False
+train_dataset = DatasetAaltoesCV1(path=dataset_train_path, img_transform=img_transform,label_transform=label_transform)
+validation_dataset = DatasetAaltoesCV1(path=dataset_validation_path, img_transform=img_transform,label_transform=label_transform)
 
-    init_epoch = 0
-    total_epoch = 100
-    batch_size = 8
+train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, drop_last=False, num_workers=workers)
+val_loader = DataLoader(validation_dataset, batch_size=batch_size, shuffle=False, drop_last=False, num_workers=workers)
 
-    Init_lr = 0.0005
-    Min_lr = Init_lr * 0.01
+model = SegFormer(num_classes=2, phi='b2', dual=True)
 
-    optimizer_type = "adamw"
-    momentum = 0.9
-    weight_decay = 1e-2
+checkpoint_path=f'checkpoints/{start_epoch}.pth'
+checkpoint_data = torch.load(checkpoint_path, map_location='cpu')
+model.load_state_dict(torch.load(checkpoint_path,weights_only=True))
 
-    # Optional parameter='step'、'cos'
-    lr_decay_type = 'cos'
+criterion = nn.CrossEntropyLoss()
+optimizer = optim.AdamW(model.parameters(), lr=5e-5)
 
-    # logs
-    save_period = 5
-    save_dir = r'./log/b2_network/'
+model = model.to(device)
 
-    eval_flag = True
-    eval_period = 1
+jaccard_index = torchmetrics.JaccardIndex(task='binary',num_classes=1)
+jaccard_index.to(device)
 
-    # dataset
-    data_path = r'./train_dataset/'
+for epoch in range(start_epoch+1, n_epochs):
+    model.train()
+    running_loss = 0.0
+    
+    for images,labels in tqdm(train_loader):
+        images = images.to(device)
+        labels = labels.to(device)
 
-    # loss
-    dice_loss = True
-    focal_loss = True
-    cls_weights = np.ones([num_classes], np.float32)
+        optimizer.zero_grad()
+        outputs = model(images)
+        preds = torch.argmin(outputs, dim=1).unsqueeze(1)
+   
+        loss = criterion(outputs, labels)
+        loss.backward()
+        optimizer.step()
+        
+    model.eval()
+    jaccard_index.reset()
+    with torch.no_grad():
+        for images,labels in tqdm(val_loader):
+            images = images.to(device)
+            labels = labels.to(device)
 
-    num_workers = 8
-    ngpus_per_node = torch.cuda.device_count()
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    local_rank = 0
+            labels = (labels[:,0,:,:]).unsqueeze(1)
+            outputs = model(images)
+            preds = torch.argmin(outputs, dim=1).unsqueeze(1)
+            jaccard_index.update(preds, labels)
 
-    model = get_net(num_classes=2, phi=phi, pretrained=pretrained, dual=dual)
-    if not pretrained:
-        weights_init(model)
-    if model_path != '':
-        if local_rank == 0:
-            print('Load weights {}.'.format(model_path))
-        checkpoint = torch.load(model_path, map_location=device)
-        model_dict = model.state_dict()
-        pretrained_dict = checkpoint['state_dict']
-        init_epoch = checkpoint['epoch']
-        load_key, no_load_key, temp_dict = [], [], {}
-        for k, v in pretrained_dict.items():
-            if k in model_dict.keys() and np.shape(model_dict[k]) == np.shape(v):
-                temp_dict[k] = v
-                load_key.append(k)
-            else:
-                no_load_key.append(k)
-        model_dict.update(temp_dict)
-        model.load_state_dict(model_dict)
-        if local_rank == 0:
-            print("\nSuccessful Load Key:", str(load_key)[:500], "……\nSuccessful Load Key Num:", len(load_key))
-            print("\nFail To Load Key:", str(no_load_key)[:500], "……\nFail To Load Key num:", len(no_load_key))
+    avg_jaccard = jaccard_index.compute()
+    print(avg_jaccard)
 
-    if local_rank == 0:
-        time_str = datetime.datetime.strftime(datetime.datetime.now(), '%Y_%m_%d_%H_%M_%S')
-        log_dir = os.path.join(save_dir, "loss_" + str(time_str))
-        loss_history = LossHistory(log_dir, model, input_shape=input_shape)
-    else:
-        loss_history = None
+    eval_file.write(f"Validation (IoU): {avg_jaccard:.4f}\n")
+    eval_file.flush()
 
-    model_train = model.train()
+    torch.save(model.state_dict(), os.path.join('checkpoints',str(epoch)+'.pth'))
 
-    if Cuda:
-        model_train = torch.nn.DataParallel(model)
-        cudnn.benchmark = True
-        model_train = model_train.cuda()
-
-    with open(os.path.join(data_path, "ImageSets/Segmentation/train.txt"), "r") as f:
-        train_lines = f.readlines()
-    with open(os.path.join(data_path, "ImageSets/Segmentation/val.txt"), "r") as f:
-        val_lines = f.readlines()
-    num_train = len(train_lines)
-    num_val = len(val_lines)
-
-
-    nbs = 16
-    lr_limit_max = 1e-4 if optimizer_type in ['adam', 'adamw'] else 5e-2
-    lr_limit_min = 3e-5 if optimizer_type in ['adam', 'adamw'] else 5e-4
-    Init_lr_fit = min(max(batch_size / nbs * Init_lr, lr_limit_min), lr_limit_max)
-    Min_lr_fit = min(max(batch_size / nbs * Min_lr, lr_limit_min * 1e-2), lr_limit_max * 1e-2)
-
-    optimizer = {
-        'adam': optim.Adam(model.parameters(), Init_lr_fit, betas=(momentum, 0.999), weight_decay=weight_decay),
-        'adamw': optim.AdamW(model.parameters(), Init_lr_fit, betas=(momentum, 0.999), weight_decay=weight_decay),
-        'sgd': optim.SGD(model.parameters(), Init_lr_fit, momentum=momentum, nesterov=True,
-                         weight_decay=weight_decay)
-    }[optimizer_type]
-    if model_path != '':
-        optimizer.load_state_dict(checkpoint['optimizer'])
-
-    lr_scheduler_func = get_lr_scheduler(lr_decay_type, Init_lr_fit, Min_lr_fit, total_epoch)
-
-    epoch_step = num_train // batch_size
-    epoch_step_val = num_val // batch_size
-
-    train_dataset = SegmentationDataset_train(train_lines, input_shape, num_classes, True, data_path)
-    val_dataset = SegmentationDataset_val(val_lines, input_shape, num_classes, False, data_path)
-
-    train_sampler = None
-    val_sampler = None
-    shuffle = True
-
-    gen = DataLoader(train_dataset, shuffle=shuffle, batch_size=batch_size, num_workers=num_workers,
-                     pin_memory=False,
-                     drop_last=True, collate_fn=seg_dataset_collate, sampler=train_sampler)
-    gen_val = DataLoader(val_dataset, shuffle=shuffle, batch_size=batch_size, num_workers=num_workers,
-                         pin_memory=False,
-                         drop_last=True, collate_fn=seg_dataset_collate, sampler=val_sampler)
-
-    if local_rank == 0:
-        eval_callback = EvalCallback(model, input_shape, num_classes, val_lines, data_path, log_dir, Cuda, \
-                                     eval_flag=eval_flag, period=eval_period)
-    else:
-        eval_callback = None
-
-    for epoch in range(init_epoch, total_epoch):
-        nbs = 16
-        lr_limit_max = 1e-4 if optimizer_type in ['adam', 'adamw'] else 5e-2
-        lr_limit_min = 3e-5 if optimizer_type in ['adam', 'adamw'] else 5e-4
-        Init_lr_fit = min(max(batch_size / nbs * Init_lr, lr_limit_min), lr_limit_max)
-        Min_lr_fit = min(max(batch_size / nbs * Min_lr, lr_limit_min * 1e-2), lr_limit_max * 1e-2)
-        lr_scheduler_func = get_lr_scheduler(lr_decay_type, Init_lr_fit, Min_lr_fit, total_epoch)
-
-        for param in model.backbone.parameters():
-            param.requires_grad = True
-
-        epoch_step = num_train // batch_size
-        epoch_step_val = num_val // batch_size
-
-        gen = DataLoader(train_dataset, shuffle=shuffle, batch_size=batch_size, num_workers=num_workers,
-                         pin_memory=True,
-                         drop_last=True, collate_fn=seg_dataset_collate, sampler=train_sampler)
-        gen_val = DataLoader(val_dataset, shuffle=shuffle, batch_size=batch_size, num_workers=num_workers,
-                             pin_memory=True,
-                             drop_last=True, collate_fn=seg_dataset_collate, sampler=val_sampler)
-
-        UnFreeze_flag = True
-
-        set_optimizer_lr(optimizer, lr_scheduler_func, epoch)
-
-        fit_one_epoch(model_train, model, loss_history, eval_callback, optimizer, epoch, epoch_step, epoch_step_val,
-                      gen, gen_val, total_epoch, Cuda,
-                      dice_loss, focal_loss, cls_weights, num_classes, save_period, save_dir,
-                      local_rank)
-
-    if local_rank == 0:
-        loss_history.writer.close()
+eval_file.close()
