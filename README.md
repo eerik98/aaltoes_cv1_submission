@@ -8,6 +8,8 @@ Team members (teamname: `here for burgers`):
 
 - Henrik Toikka [GitHub](https://github.com/htoik)
 
+Competition is accessible on [Kaggle](https://www.kaggle.com/competitions/aaltoes-2025-computer-vision-v-1)
+
 ## Results
 
 TODO
