@@ -1,4 +1,4 @@
-from nets.EITLnet import SegFormer
+from EITLnet.nets.EITLnet import SegFormer
 import torch
 import os
 import torch
