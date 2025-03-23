@@ -45,15 +45,4 @@ pip install -e .
 
 ## Replication of submission results
 
-The best weights can be found in `checkpoints/`.
-
-```bash
-# TODO
-```
-
-## Training
-
-```bash
-. scripts/source.sh
-python3 train.py
-```
+The best weights can be found in `checkpoints/`. Download them, and follow the instructions in the notebook.
