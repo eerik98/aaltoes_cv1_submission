@@ -7,10 +7,13 @@ import torchvision.transforms as T
 import torch.nn as nn
 import torch.optim as optim
 import torchmetrics
-from own_dataset import OwnDataset
+from dataset_aaltoes_cv1 import DatasetAaltoesCV1
 from tqdm import tqdm
+from aaltoes_cv1.utils import get_transforms, get_config
 
-eval_file=open(os.path.join('checkpoints','eval.txt'),"w")
+config = get_config('./config.yml')
+
+eval_file=open(os.path.join('checkpoints','eval.txt'),"a")
 
 # dataset_path='/home/eerik/data_storage/DATA/aaltoes-2025-computer-vision-v-1'
 dataset_train_path=os.path.expanduser('~/workspace/aaltoes_cv1/kaggle_aaltoes_cv1/train')
@@ -30,17 +33,10 @@ if device != 'cpu':
     cudnn.enabled = False
     # cudnn.enabled = True
 
-# Define transformations
-img_transform = T.Compose([
-    T.ToTensor(),
-    T.Normalize(mean = [0.485, 0.456, 0.406], std = [0.229, 0.224, 0.225]) #IMAGENET normalization
-])
-label_transform = T.Compose([
-    T.ToTensor()
-])
+img_transform, label_transform = get_transforms()
 
-train_dataset = OwnDataset(path=dataset_train_path, img_transform=img_transform,label_transform=label_transform)
-validation_dataset = OwnDataset(path=dataset_validation_path, img_transform=img_transform,label_transform=label_transform)
+train_dataset = DatasetAaltoesCV1(path=dataset_train_path, img_transform=img_transform,label_transform=label_transform)
+validation_dataset = DatasetAaltoesCV1(path=dataset_validation_path, img_transform=img_transform,label_transform=label_transform)
 
 train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, drop_last=False, num_workers=workers)
 val_loader = DataLoader(validation_dataset, batch_size=batch_size, shuffle=False, drop_last=False, num_workers=workers)

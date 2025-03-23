@@ -23,6 +23,8 @@ git clone --recursive https://github.com/eerik98/aaltoes_cv1_submission
 cd aaltoes_cv1_submission
 
 conda env create -f environment.yml
+./setup.sh
+pip install -e .
 ```
 
 ## Replication of submission results

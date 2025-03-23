@@ -7,4 +7,4 @@ name = "aaltoes-cv1"
 version = "0.1.0"
 
 [tool.setuptools]
-packages = ["aaltoes_cv1", "utils"]
+packages = ["utils", "EITL_Net.utils", "EITL_Net.nets"]

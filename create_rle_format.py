@@ -2,6 +2,12 @@ import numpy as np
 import cv2
 import os
 
+def main():
+    src_path = "preds"
+    output_fp = 'submission.csv'
+    with open(output_fp, 'w') as f:
+        f.write(construct_submission(src_path))
+
 # From: https://www.kaggle.com/competitions/aaltoes-2025-computer-vision-v-1/data
 def mask2rle(img):
     """
@@ -43,8 +49,5 @@ def construct_submission(src_path):
         lines.append(','.join([img_fn.split('.')[0], mask_rle]))
     return '\n'.join(['ImageId,EncodedPixels', *lines])
 
-src_path = "preds"
-output_fp = 'submission.csv'
-
-with open(output_fp, 'w') as f:
-    f.write(construct_submission(src_path))
+if __name__ == '__main__':
+    main()

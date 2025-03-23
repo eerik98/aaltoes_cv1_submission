@@ -5,7 +5,7 @@ from PIL import Image
 import random
 
 
-class OwnDataset(Dataset):
+class DatasetAaltoesCV1(Dataset):
     def __init__(self, path, img_transform, label_transform, only_inference=False):
         self.forged_dir=os.path.join(path,'images')
         self.label_dir=os.path.join(path,'masks')
