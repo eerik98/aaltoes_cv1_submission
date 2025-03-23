@@ -12,7 +12,14 @@ Competition is accessible on [Kaggle](https://www.kaggle.com/competitions/aaltoe
 
 ## Results
 
-TODO
+![Screenshot from 2025-03-23 17-47-01](https://github.com/user-attachments/assets/bc94f2df-d383-42db-9154-cb6be0c01588)
+
+![image_10](https://github.com/user-attachments/assets/316ee492-17d9-413d-813b-21fe89354108)
+
+![image_0](https://github.com/user-attachments/assets/76d320c4-905e-4b3e-ab59-907fe2514938)
+
+![image_100](https://github.com/user-attachments/assets/4d05ad6f-58ae-4924-bb69-0a4057e0419a)
+
 
 ## Training procedure
 
