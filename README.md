@@ -30,6 +30,8 @@ The training was done in phases with a single RTX 3070 (8GB).
 5. Validation score converged after 21 epochs of training -> achieved test score 96.7
 6. We further trained the model without pairwise image loading for one more epoch to replicate the test scenario more accurately -> achieved test score 97.1.
 
+Further training with/without augmentations, with different learning rates, didn't improve performance
+
 ## Installation
 
 ```bash
@@ -43,7 +45,7 @@ pip install -e .
 
 ## Replication of submission results
 
-The best weights can be found in `best_weights/`.
+The best weights can be found in `checkpoints/`.
 
 ```bash
 # TODO
