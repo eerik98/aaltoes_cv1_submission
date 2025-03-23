@@ -10,7 +10,7 @@ from EITLNet.nets.EITLnet import SegFormer
 from aaltoes_cv1.dataset_aaltoes_cv1 import DatasetAaltoesCV1
 from aaltoes_cv1.utils import get_transforms, get_config
 
-config = get_config('./config.yml')
+config = get_config('./config/config.yml')
 
 eval_file=open(os.path.join('checkpoints','eval.txt'),"a")
 
@@ -22,9 +22,6 @@ batch_size=16
 device='cuda'
 n_epochs=100
 workers=12
-# momentum=0.9
-# weight_decay=1e-2
-# , betas=(momentum, 0.999), weight_decay=weight_decay
 
 if device != 'cpu':
     import torch.backends.cudnn as cudnn
