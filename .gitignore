@@ -1,0 +1,8 @@
+**/__pycache__/
+samples/
+test_out/
+log/
+checkpoints/
+weights/
+*.png
+model_data/
