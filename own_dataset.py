@@ -6,31 +6,44 @@ import random
 
 
 class OwnDataset(Dataset):
-    def __init__(self, path, img_transform, label_transform):
+    def __init__(self, path, img_transform, label_transform, only_inference=False):
         self.forged_dir=os.path.join(path,'images')
         self.label_dir=os.path.join(path,'masks')
         self.original_dir=os.path.join(path,'originals')
         self.img_transform = img_transform
         self.label_transform = label_transform
+        self.only_inference = only_inference
         
         dict1 = dict([(int(img.split('_')[1].split('.')[0]), img) for img in os.listdir(self.forged_dir)])
-        dict2 = dict([(int(img.split('_')[1].split('.')[0]), img) for img in os.listdir(self.label_dir)])
-        dict3 = dict([(int(img.split('_')[1].split('.')[0]), img) for img in os.listdir(self.original_dir)])
+        if not only_inference:
+            dict2 = dict([(int(img.split('_')[1].split('.')[0]), img) for img in os.listdir(self.label_dir)])
+            dict3 = dict([(int(img.split('_')[1].split('.')[0]), img) for img in os.listdir(self.original_dir)])
 
-        ks = set(dict1.keys()).union(set(dict2.keys()), set(dict3.keys()))
+        if only_inference:
+            ks = set(dict1.keys())
+        else:
+            ks = set(dict1.keys()).union(set(dict2.keys()), set(dict3.keys()))
         self.img_idxs = list(range(len(ks)))
         self.img_to_idxs = dict(zip(sorted(ks), self.img_idxs))
 
         self.dataset = dict((self.img_to_idxs[k], [None, None, None]) for k in ks)
         for idx, img in dict1.items(): self.dataset[self.img_to_idxs[idx]][0] = img
-        for idx, img in dict2.items(): self.dataset[self.img_to_idxs[idx]][1] = img
-        for idx, img in dict3.items(): self.dataset[self.img_to_idxs[idx]][2] = img
+        if not only_inference:
+            for idx, img in dict2.items(): self.dataset[self.img_to_idxs[idx]][1] = img
+            for idx, img in dict3.items(): self.dataset[self.img_to_idxs[idx]][2] = img
 
     def __len__(self):
         return len(self.dataset)
 
     def __getitem__(self, idx):
         forged_fn, label_fn, original_fn = self.dataset[idx]
+
+        if self.only_inference:
+            forged_path = os.path.join(self.forged_dir, forged_fn)
+            image = Image.open(forged_path).convert("RGB")
+            image = self.img_transform(image)
+            return image, forged_fn
+
         # forged_path = os.path.join(self.forged_dir,'image_'+str(idx)+'.png')
         # original_path = os.path.join(self.original_dir,'image_'+str(idx)+'.png')
         # label_path = os.path.join(self.label_dir,'image_'+str(idx)+'.png')  # Assuming masks have the same filename as images

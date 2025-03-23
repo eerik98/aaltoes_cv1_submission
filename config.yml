@@ -1,0 +1,6 @@
+train:
+  batch_size: 16
+  device: cuda
+  n_epochs: 100
+  workers: 12
+dataset: "~/workspace/aaltoes_cv1/kaggle_aaltoes_cv1_proper"

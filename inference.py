@@ -14,14 +14,18 @@ import cv2
 import yaml
 import sys
 from nets.EITLnet import SegFormer
+from tqdm import tqdm
 
 
 model = SegFormer(num_classes=2, phi='b2', dual=True)
 
-result_dir='/home/eerik/data_storage/DATA/aaltoes-2025-computer-vision-v-1/test/test/preds'
-image_dir='/home/eerik/data_storage/DATA/aaltoes-2025-computer-vision-v-1/test/test/images'
+result_dir='preds2'
+image_dir=os.path.expanduser("~/workspace/aaltoes_cv1/kaggle_aaltoes_cv1/test")
 
-checkpoint_path='checkpoints/21.pth'
+if not os.path.exists(result_dir):
+    os.mkdir(result_dir)
+
+checkpoint_path='checkpoints/23.pth'
 checkpoint_data = torch.load(checkpoint_path, map_location='cpu')
 
 model.load_state_dict(torch.load(checkpoint_path,weights_only=True))
@@ -34,17 +38,30 @@ img_transform = T.Compose([
     T.Normalize(mean = [0.485, 0.456, 0.406], std = [0.229, 0.224, 0.225]) #IMAGENET normalization
 ])
 
-#test_dataset = OwnDataset(path=img, img_transform=img_transform)
-#test_loader=DataLoader(test_dataset, batch_size=1, shuffle=False, drop_last=False)
+test_dataset = OwnDataset(path=image_dir, img_transform=img_transform, label_transform=None, only_inference=True)
+test_loader = DataLoader(test_dataset, batch_size=16, shuffle=False, drop_last=False, num_workers=12)
 
 
-for image_file in os.listdir(image_dir):
-    image = Image.open(os.path.join(image_dir,image_file)).convert("RGB")
-    image_tensor = img_transform(image)
-    image_tensor = image_tensor.unsqueeze(0).to(device) #add batch_dim
-
+for images, filenames in tqdm(test_loader, desc="Inference"):
+    images = images.to(device)
     with torch.no_grad():
-        output = model(image_tensor)
-        output = torch.argmin(output, dim=1).squeeze(0)
-        output = output.cpu().numpy()
-        cv2.imwrite(os.path.join(result_dir,image_file),(output*255).astype('uint8'))
+        outputs = model(images)
+        # Assuming the model's output has shape [batch, num_classes, H, W]
+        predictions = torch.argmin(outputs, dim=1)  # shape: [batch, H, W]
+        predictions = predictions.cpu().numpy()
+
+    # Save each prediction with its corresponding filename.
+    for pred, filename in zip(predictions, filenames):
+        # Multiply by 255 if the mask is binary (0/1).
+        cv2.imwrite(os.path.join(result_dir, filename), (pred * 255).astype('uint8'))
+
+# for image_file in os.listdir(image_dir):
+#     image = Image.open(os.path.join(image_dir,image_file)).convert("RGB")
+#     image_tensor = img_transform(image)
+#     image_tensor = image_tensor.unsqueeze(0).to(device) #add batch_dim
+
+#     with torch.no_grad():
+#         output = model(image_tensor)
+#         output = torch.argmin(output, dim=1).squeeze(0)
+#         output = output.cpu().numpy()
+#         cv2.imwrite(os.path.join(result_dir,image_file), (output*255).astype('uint8'))

@@ -43,7 +43,7 @@ def construct_submission(src_path):
         lines.append(','.join([img_fn.split('.')[0], mask_rle]))
     return '\n'.join(['ImageId,EncodedPixels', *lines])
 
-src_path = "/home/eerik/data_storage/DATA/aaltoes-2025-computer-vision-v-1/test/test/preds"
+src_path = "preds"
 output_fp = 'submission.csv'
 
 with open(output_fp, 'w') as f:

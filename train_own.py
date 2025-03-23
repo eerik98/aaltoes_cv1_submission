@@ -1,40 +1,34 @@
 from nets.EITLnet import SegFormer
 import torch
 import os
-from PIL import Image
 import torch
-from torch.utils.data import Dataset, DataLoader, Subset
+from torch.utils.data import DataLoader
 import torchvision.transforms as T
-import torchvision.models.segmentation as segmentation
 import torch.nn as nn
 import torch.optim as optim
 import torchmetrics
-import numpy as np
 from own_dataset import OwnDataset
 from tqdm import tqdm
-from sklearn.model_selection import train_test_split
-import yaml
-import shutil
-import cv2
-
-#log_dir=os.path.join('./','logs')
-#checkpoint_dir=os.path.join(log_dir,'checkpoints')
 
 eval_file=open(os.path.join('checkpoints','eval.txt'),"w")
 
 # dataset_path='/home/eerik/data_storage/DATA/aaltoes-2025-computer-vision-v-1'
-dataset_train_path=os.path.expanduser('~/workspace/aaltoes_cv1/kaggle_aaltoes_cv1_proper/train')
+dataset_train_path=os.path.expanduser('~/workspace/aaltoes_cv1/kaggle_aaltoes_cv1/train')
+# dataset_train_path=os.path.expanduser('~/workspace/aaltoes_cv1/kaggle_aaltoes_cv1_proper/train')
 dataset_validation_path=os.path.expanduser('~/workspace/aaltoes_cv1/kaggle_aaltoes_cv1_proper/validation')
 batch_size=16
 device='cuda'
 n_epochs=100
 workers=12
+momentum=0.9
+weight_decay=1e-2
 
 if device != 'cpu':
     import torch.backends.cudnn as cudnn
     cudnn.benchmark = False
     cudnn.deterministic = False
-    cudnn.enabled = True
+    cudnn.enabled = False
+    # cudnn.enabled = True
 
 # Define transformations
 img_transform = T.Compose([
@@ -53,13 +47,13 @@ val_loader = DataLoader(validation_dataset, batch_size=batch_size, shuffle=False
 
 model = SegFormer(num_classes=2, phi='b2', dual=True)
 
-start_epoch = 21
+start_epoch = 23
 checkpoint_path=f'checkpoints/{start_epoch}.pth'
 checkpoint_data = torch.load(checkpoint_path, map_location='cpu')
 model.load_state_dict(torch.load(checkpoint_path,weights_only=True))
 
 criterion = nn.CrossEntropyLoss()
-optimizer = optim.AdamW(model.parameters(), lr=1e-5)
+optimizer = optim.AdamW(model.parameters(), lr=5e-5, betas=(momentum, 0.999), weight_decay=weight_decay)
 
 model = model.to(device)
 
