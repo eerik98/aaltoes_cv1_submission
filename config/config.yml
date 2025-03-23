@@ -1,10 +1,10 @@
 train:
-  batch_size: 16
+  batch_size: 8
   device: cuda
   n_epochs: 100
   workers: 12
-  start_epoch: 23
-  best_epoch: 23
+  start_epoch: 22
+  best_epoch: 22
 dataset: "~/workspace/aaltoes_cv1/kaggle_aaltoes_cv1_proper"
-test_dataset: "~/workspace/aaltoes_cv1/kaggle_aaltoes_cv1/test"
+test_dataset: "/home/eerik/data_storage/DATA/aaltoes-2025-computer-vision-v-1/test/test"
 use_cudnn: false
