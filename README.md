@@ -16,15 +16,21 @@ TODO
 
 ## Training procedure
 
-The training was done in phases.
+We adapted the EITLNet for the task. It has a dual-branch transformer structure, with RGB and image noise inputs respectively. 
 
+
+![Screenshot from 2025-03-23 17-20-02](https://github.com/user-attachments/assets/da300309-a7cc-41b5-9cfc-1fa747d0fa82)
+
+
+The training was done in phases with a single RTX 3070 (8GB).
 1. Created train-validation split with 90% and 10% respectively
- 
-2. We trained the model with `lr=1e-4` for ~20 epochs
+2. To learn to discriminate forged images from pristine, we loaded the forged and original as pair (if original available).4 such pairs could be fitted to the GPU (Batch size of 4*2 images). 
+3. We initialized with a pre-trained mit_b2 checkpoint from the EITLNet repository
+4. Hyperparameters: lr=1e-5, Adam optimizer
+5. Validation score converged after 21 epochs of training -> achieved test score 96.7
+6. We further trained the model without pairwise image loading for one more epoch to replicate the test scenario more accurately -> achieved test score 97.1.
 
-3. Few epochs were trained with `lr=1e-5`
-
-<!-- 4. Full-send: Final model was trained with all given data  -->
+Further training with/without augmentations, with different learning rates, didn't improve performance
 
 ## Installation
 
@@ -39,7 +45,7 @@ pip install -e .
 
 ## Replication of submission results
 
-The best weights can be found in `best_weights/`.
+The best weights can be found in `checkpoints/`.
 
 ```bash
 # TODO
